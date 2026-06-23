@@ -44,6 +44,7 @@
 </div>
 <div id="crosshair"></div>
 
+<!-- SCRIPTS THREE.JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/OBJLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/MTLLoader.js"></script>
@@ -93,7 +94,6 @@ const ground = new THREE.Mesh(groundGeo, groundMat);
 scene.add(ground);
 
 // fonction pour connaître la hauteur du sol à une position x,z donnée
-// (même formule que celle utilisée pour générer le relief)
 function getGroundHeight(x, z) {
   return Math.sin(x * 0.05) * 2 + Math.cos(z * 0.05) * 2;
 }
@@ -154,29 +154,37 @@ function updateMovement(delta) {
   camera.rotation.x = pitch;
 }
 
-// ---------- CHARGEMENT DES MATÉRIAUX ET DE L'OBJET ----------
+// ---------- CHARGEMENT DU MODÈLE ET DE SES TEXTURES ----------
 const mtlLoader = new THREE.MTLLoader();
 const objLoader = new THREE.OBJLoader();
 
-// 1. On charge d'abord le fichier de matériaux (.mtl)
+// 1. On charge d'abord le fichier de textures .mtl
 mtlLoader.load('assets/obj.mtl', (materials) => {
-    materials.preload(); // On prépare les matériaux
+    materials.preload();
     
-    // 2. On donne ces matériaux à l'OBJLoader
+    // 2. On transmet les textures au chargeur d'objets
     objLoader.setMaterials(materials);
 
-    // 3. On charge enfin le fichier 3D (.obj)
+    // 3. On charge le fichier de forme .obj
     objLoader.load('assets/tinker.obj', (model) => {
 
-        // --- Un seul arbre spécifique (optionnel, comme dans ton code) ---
+        // --- ARBRE UNIQUE DE TEST ---
         const singleTree = model.clone();
+        
+        // Taille réduite à 0.04 (ajuste ici si c'est encore trop grand/petit)
+        singleTree.scale.set(0.04, 0.04, 0.04);
+
         const xSpec = 20;
         const zSpec = -10;
-        singleTree.scale.set(0.5, 0.5, 0.5);
-        singleTree.position.set(xSpec, getGroundHeight(xSpec, zSpec), zSpec);
+        singleTree.position.set(
+            xSpec,
+            getGroundHeight(xSpec, zSpec),
+            zSpec
+        );
         scene.add(singleTree);
 
-        // --- Génération de la forêt (200 arbres) ---
+
+        // --- LA FORÊT (200 ARBRES) ---
         for(let i = 0; i < 200; i++) {
             const tree = model.clone();
 
@@ -189,9 +197,11 @@ mtlLoader.load('assets/obj.mtl', (materials) => {
                 z
             );
 
-            // Taille et rotation aléatoires pour faire plus naturel
-            const s = 0.4 + Math.random() * 0.8;
+            // Taille aléatoire mais TRÈS PETITE pour correspondre à l'échelle du terrain
+            const s = 0.03 + Math.random() * 0.03;
             tree.scale.set(s, s, s);
+
+            // Rotation aléatoire pour un effet naturel
             tree.rotation.y = Math.random() * Math.PI * 2;
 
             scene.add(tree);
