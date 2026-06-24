@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>My first 3D game</title>
+<style>
+
+</style>
+</head>
+<body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+
+const scene = new THREE.Scene();
+
+scene.background = new THREE.Color(0x74D5F7);
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5, 10, 7);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0x404040));
+
+const tileSize = 2;
+const gridCount = 10;
+const tiles = [];
+
+const tileGeometry = new THREE.BoxGeometry(tileSize, 0.5, tileSize);
+
+for (let x = 0; x < gridCount; x++) {
+  for (let z = 0; z < gridCount; z++) {
+    const material = new THREE.MeshStandardMaterial({ color: 0x59A148 });
+    const tile = new THREE.Mesh(tileGeometry, material);
+    tile.position.set(
+      (x - gridCount / 2) * tileSize,
+      0,
+      (z - gridCount / 2) * tileSize
+    );
+    scene.add(tile);
+    tiles.push(tile);
+  }
+}
+
+// const playerGeometry = new THREE.SphereGeometry(1, 32, 32);
+// const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+// const player = new THREE.Mesh(playerGeometry, playerMaterial);
+// player.position.y = 1;
+// scene.add(player);
+
+let player;
+let mixer;
+const loader = new THREE.GLTFLoader();
+
+loader.load('animal-dog.glb', (gltf) => {
+  player = gltf.scene;
+  player.position.y = 1;
+  player.scale.set(0.8, 0.8, 0.8);
+  scene.add(player);
+
+  mixer = new THREE.AnimationMixer(player);
+  const walkClip = gltf.animations.find(a => a.name.toLowerCase().includes('walk'));
+  if (walkClip) {
+    const action = mixer.clipAction(walkClip);
+    action.play();
+  }
+});
+
+const keys = {};
+document.addEventListener('keydown', (e) => { keys[e.key] = true; });
+document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+const speed = 0.05;
+let velocityY = 0;
+const gravity = -0.02;
+const jumpForce = 0.35;
+let canJump = true;
+
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && canJump) {
+velocityY = jumpForce;
+canJump = false;
+  }
+});
+
+setInterval(() => {
+  if (tiles.length === 0) return;
+  const index = Math.floor(Math.random() * tiles.length);
+  const tile = tiles[index];
+
+  tile.material.color.set(0x3B6132);
+  tiles.splice(index, 1);
+
+  setTimeout(() => {
+  scene.remove(tile);
+  }, 1000);
+}, 1500);
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (!player) return;
+
+  if (keys['ArrowUp'] || keys['w']) player.position.z -= speed;
+  if (keys['ArrowDown'] || keys['s']) player.position.z += speed;
+  if (keys['ArrowLeft'] || keys['a']) player.position.x -= speed;
+  if (keys['ArrowRight'] || keys['d']) player.position.x += speed;
+
+  let moveX = 0;
+  let moveZ = 0;
+
+  if (keys['ArrowUp'] || keys['w']) moveZ -= 1;
+  if (keys['ArrowDown'] || keys['s']) moveZ += 1;
+  if (keys['ArrowLeft'] || keys['a'])moveX -= 1;
+  if (keys['ArrowRight'] || keys['d'])moveX += 1;
+
+  if (moveX !== 0 || moveZ !== 0) {
+    player.position.x += moveX * speed;
+    player.position.z += moveZ * speed;
+    player.rotation.y = Math.atan2(moveX, moveZ);
+  }
+
+  velocityY += gravity;
+  player.position.y += velocityY;
+
+const isOnTile = tiles.some(tile =>
+  Math.abs(tile.position.x - player.position.x) < tileSize / 2 &&
+  Math.abs(tile.position.z - player.position.z) < tileSize / 2
+);
+
+if (isOnTile && player.position.y <= 1) {
+player.position.y = 1;
+velocityY = 0;
+canJump = true;
+}
+
+  camera.position.x = player.position.x;
+  camera.position.y = player.position.y + 3;
+  camera.position.z = player.position.z + 5;
+  camera.lookAt(player.position);
+  renderer.render(scene, camera);
+
+  if (player.position.y < -10) {
+    alert("Perdu");
+    player.position.set(0, 1, 0);
+    velocityY = 0;
+  }
+}
+
+animate();
+</script>
+</body>
+</html>
